@@ -2422,7 +2422,7 @@ speedauto = speed.addoption("AutoJump", Boolean, true);
 			}, "World", () => (nukerRange[1] + " blocks, " + nukerBlocksPerTick[1] + "/tick"));
 			nukerRange = nuker.addoption("Range", Number, 3);
 			nukerBlocksPerTick = nuker.addoption("Blocks Per Tick", Number, 1);
-			nukerDelay = nuker.addoption("Delay (ms)", Number, 100);
+			nukerDelay = nuker.addoption("Delay (ms)", Number, 1000);
 
 			function getItemStrength(stack) {
 				if (stack == null) return 0;
@@ -4057,4 +4057,5 @@ function createModuleRow(name, mod, content) {
 		// === Startup notification ===
 		setTimeout(() => { showNotif("Press \\\\ to open Impact V6 ClickGUI!", "info", 4000); }, 500);
 	}
+
 })();
