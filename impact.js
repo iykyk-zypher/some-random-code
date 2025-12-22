@@ -4057,7 +4057,4 @@ function createModuleRow(name, mod, content) {
 		// === Startup notification ===
 		setTimeout(() => { showNotif("Press \\\\ to open Impact V6 ClickGUI!", "info", 4000); }, 500);
 	}
-
 })();
-
-
