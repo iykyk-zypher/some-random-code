@@ -2421,8 +2421,8 @@ speedauto = speed.addoption("AutoJump", Boolean, true);
 			    }
 			}, "World", () => (nukerRange[1] + " blocks, " + nukerBlocksPerTick[1] + "/tick"));
 			nukerRange = nuker.addoption("Range", Number, 3);
-			nukerBlocksPerTick = nuker.addoption("Blocks Per Tick", Number, 1);
-			nukerDelay = nuker.addoption("Delay (ms)", Number, 1000);
+			nukerBlocksPerTick = nuker.addoption("Blocks Per Tick", Number, 10);
+			nukerDelay = nuker.addoption("Delay (ms)", Number, 100);
 
 			function getItemStrength(stack) {
 				if (stack == null) return 0;
@@ -4059,3 +4059,4 @@ function createModuleRow(name, mod, content) {
 	}
 
 })();
+
