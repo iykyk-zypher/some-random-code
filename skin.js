@@ -266,7 +266,7 @@ function modifyCode(text) {
 	`);
 
 	// スキン定義を追加
-	addModification('bob:{id:"bob",name:"Bob",tier:0,skinny:!1},', 'CustomSkin:{id:"CustomSkin",name:"CustomSkin",tier:2,skinny:!1},');
+	addModification('bob:{id:"bob",name:"Bob",tier:0,skinny:!1},', 'CustomSkin:{id:"herobrine",name:"Herobrine",tier:2,skinny:!1},');
 	
 	// スキンダウンロード処理を改良
 	addModification('async downloadSkin(u){', `
