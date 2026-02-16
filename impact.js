@@ -4264,7 +4264,220 @@ const survival = new Module("SurvivalMode", function(callback) {
 
 			window.dynamicIsland = dynamicIsland;
 		})();
-	`);
+
+// AIMBOT MODULE
+// AIMBOT MODULE
+new Module("Aimbot", (enabled) => {
+    if (!enabled) return;
+    
+    // Configuration
+    const config = {
+        range: modules["Aimbot"].options["Range"][1],
+        smoothness: modules["Aimbot"].options["Smoothness"][1],
+        aimBone: modules["Aimbot"].options["AimBone"][1],
+        fov: modules["Aimbot"].options["FOV"][1],
+        targetPlayers: modules["Aimbot"].options["TargetPlayers"][1],
+        targetMobs: modules["Aimbot"].options["TargetMobs"][1],
+        ignoreFriends: modules["Aimbot"].options["IgnoreFriends"][1],
+        onlyInCombat: modules["Aimbot"].options["OnlyInCombat"][1],
+        requireClick: modules["Aimbot"].options["RequireClick"][1],
+        aimKey: modules["Aimbot"].options["AimKey"][1],
+        attackOnTarget: modules["Aimbot"].options["AttackOnTarget"][1],
+        silentAim: modules["Aimbot"].options["SilentAim"][1],
+        prediction: modules["Aimbot"].options["Prediction"][1]
+    };
+    
+    // Check if aim key is pressed
+    if (config.aimKey !== "none" && !keyPressed(config.aimKey)) return;
+    if (config.requireClick && !isMouseDown) return;
+    if (config.onlyInCombat && !player.isAttacking()) return;
+    
+    // Find best target
+    let bestTarget = null;
+    let bestDistance = Infinity;
+    let bestAngle = Infinity;
+    
+    for (const entity of Object.values(entities)) {
+        if (!entity || entity.id === player.id) continue;
+        if (!entity.mesh || !entity.mesh.visible) continue;
+        if (entity.isDead || entity.getHealth() <= 0) continue;
+        
+        // Check entity type
+        const isPlayer = entity.type === "player";
+        const isMob = entity.type === "mob";
+        
+        if ((isPlayer && !config.targetPlayers) || (isMob && !config.targetMobs)) continue;
+        
+        // Check friends
+        if (config.ignoreFriends && friends.includes(entity.name)) continue;
+        
+        // Check distance
+        const distance = player.pos.distanceTo(entity.pos);
+        if (distance > config.range) continue;
+        
+        // Check FOV
+        const angle = getAngleToEntity(entity);
+        if (angle > config.fov) continue;
+        
+        // Check if this is a better target (prioritize closer angle)
+        if (angle < bestAngle || (angle === bestAngle && distance < bestDistance)) {
+            bestAngle = angle;
+            bestDistance = distance;
+            bestTarget = entity;
+        }
+    }
+    
+    if (!bestTarget) return;
+    
+    // Aim at target
+    if (!config.silentAim) {
+        aimAtTarget(bestTarget, config);
+    } else {
+        // Silent aim - only send packets without actually moving camera
+        const angles = calculateAimAngles(bestTarget, config);
+        if (angles) {
+            // Store silent aim values for attack packets
+            silentYaw = angles.yaw;
+            silentPitch = angles.pitch;
+        }
+    }
+    
+    // Auto attack on target
+    if (config.attackOnTarget && isMouseDown && !player.isSwingInProgress) {
+        player.attack(bestTarget);
+        
+        // Critical hits
+        if (modules["KillAura"] && modules["KillAura"].options["Criticals"][1] && player.onGround) {
+            player.motion.y = 0.42;
+        }
+    }
+    
+}, "Combat", () => {
+    // Display current target in GUI
+    if (target && modules["Aimbot"].enabled) {
+        return `Target: ${target.name} (${Math.floor(player.pos.distanceTo(target.pos))}m)`;
+    }
+    return undefined;
+});
+
+// Add aimbot options
+modules["Aimbot"].addoption("Range", Number, 6.0);
+modules["Aimbot"].addoption("Smoothness", Number, 0.15);
+modules["Aimbot"].addoption("AimBone", String, "head");
+modules["Aimbot"].addoption("FOV", Number, 90);
+modules["Aimbot"].addoption("TargetPlayers", Boolean, true);
+modules["Aimbot"].addoption("TargetMobs", Boolean, false);
+modules["Aimbot"].addoption("IgnoreFriends", Boolean, true);
+modules["Aimbot"].addoption("OnlyInCombat", Boolean, false);
+modules["Aimbot"].addoption("RequireClick", Boolean, false);
+modules["Aimbot"].addoption("AimKey", String, "none");
+modules["Aimbot"].addoption("AttackOnTarget", Boolean, false);
+modules["Aimbot"].addoption("SilentAim", Boolean, false);
+modules["Aimbot"].addoption("Prediction", Number, 0.0);
+
+// Helper functions for aimbot
+function getAngleToEntity(entity) {
+    const dx = entity.pos.x - player.pos.x;
+    const dy = entity.pos.y - player.pos.y;
+    const dz = entity.pos.z - player.pos.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    
+    const yaw = Math.atan2(dz, dx) * 180 / Math.PI - 90;
+    const pitch = -Math.atan2(dy, distance) * 180 / Math.PI;
+    
+    const yawDiff = Math.abs(((yaw - player.yaw + 180) % 360) - 180);
+    const pitchDiff = Math.abs(pitch - player.pitch);
+    
+    return Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
+}
+
+function calculateAimAngles(entity, config) {
+    // Predict entity movement
+    let aimPos = entity.pos.clone();
+    if (config.prediction > 0 && entity.motion) {
+        aimPos.x += entity.motion.x * config.prediction;
+        aimPos.y += entity.motion.y * config.prediction;
+        aimPos.z += entity.motion.z * config.prediction;
+    }
+    
+    // Aim at specific bone
+    switch (config.aimBone) {
+        case "head":
+            aimPos.y += entity.height * 0.85;
+            break;
+        case "body":
+            aimPos.y += entity.height * 0.5;
+            break;
+        case "legs":
+            aimPos.y += entity.height * 0.15;
+            break;
+        case "feet":
+            aimPos.y += 0.1;
+            break;
+    }
+    
+    // Calculate angles
+    const dx = aimPos.x - player.pos.x;
+    const dy = aimPos.y - player.pos.y;
+    const dz = aimPos.z - player.pos.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    
+    if (distance === 0) return null;
+    
+    const yaw = Math.atan2(dz, dx) * 180 / Math.PI - 90;
+    const pitch = -Math.atan2(dy, distance) * 180 / Math.PI;
+    
+    return {
+        yaw: yaw,
+        pitch: Math.max(-90, Math.min(90, pitch)) // Clamp pitch
+    };
+}
+
+function aimAtTarget(entity, config) {
+    const angles = calculateAimAngles(entity, config);
+    if (!angles) return;
+    
+    // Smooth aiming
+    const yawDiff = ((angles.yaw - player.yaw + 180) % 360) - 180;
+    const pitchDiff = angles.pitch - player.pitch;
+    
+    // Apply smoothness
+    const smoothFactor = 1 - config.smoothness;
+    sendYaw = player.yaw + yawDiff * smoothFactor;
+    sendPitch = player.pitch + pitchDiff * smoothFactor;
+}
+
+// Add silent aim variables
+let silentYaw = null;
+let silentPitch = null;
+
+// Modify attack function to use silent aim
+const originalAttack = player.attack;
+player.attack = function(target) {
+    if (modules["Aimbot"] && modules["Aimbot"].options["SilentAim"][1] && silentYaw !== null && silentPitch !== null) {
+        // Send attack with silent aim angles
+        const packet = new CPacketPlayerDigging({
+            position: target.pos,
+            face: 0,
+            status: 1,
+            x: silentYaw,
+            y: silentPitch,
+            onGround: player.onGround
+        });
+        ClientSocket.sendPacket(packet);
+        
+        // Reset silent aim
+        silentYaw = null;
+        silentPitch = null;
+    }
+    
+    // Call original attack
+    return originalAttack.call(this, target);
+};
+
+// Add aimbot to combat category in GUI
+// This will make it appear with other combat modules like KillAura
+`);
 
 	async function saveVapeConfig(profile) {
 		if (!loadedConfig) return;
