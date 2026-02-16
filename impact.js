@@ -4396,6 +4396,7 @@ modules["Aimbot"].addoption("OnlyInCombat", Boolean, false);
 modules["Aimbot"].addoption("RequireClick", Boolean, false);
 modules["Aimbot"].addoption("FOV", Number, 90);
 modules["Aimbot"].addoption("IgnoreFriends", Boolean, true);
+})();
 `);
 
 	async function saveVapeConfig(profile) {
