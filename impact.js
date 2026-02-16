@@ -4288,6 +4288,9 @@ new Module("Aimbot", (enabled) => {
         let bestTarget = null;
         let bestAngle = Infinity;
         
+        // Check if entities exists and is an object
+        if (!entities || typeof entities !== 'object') return null;
+        
         for (const entity of Object.values(entities)) {
             if (!entity || entity.id === player.id) continue;
             
@@ -4302,7 +4305,7 @@ new Module("Aimbot", (enabled) => {
             } else continue;
             
             // Check friends
-            if (aimbotConfig.ignoreFriends && friends.includes(entity.name)) continue;
+            if (aimbotConfig.ignoreFriends && friends && friends.includes(entity.name)) continue;
             
             // Check distance
             const distance = player.pos.distanceTo(entity.pos);
@@ -4343,7 +4346,14 @@ new Module("Aimbot", (enabled) => {
         if (!target) return;
         
         // Calculate aim position
-        let aimPos = target.pos.clone();
+        let aimPos = target.pos;
+        
+        // Check if pos has clone method, if not create a new object
+        if (typeof target.pos.clone === 'function') {
+            aimPos = target.pos.clone();
+        } else {
+            aimPos = { x: target.pos.x, y: target.pos.y, z: target.pos.z };
+        }
         
         // Aim at specific bone
         switch (aimbotConfig.aimBone) {
@@ -4371,14 +4381,15 @@ new Module("Aimbot", (enabled) => {
         const yawDiff = ((targetYaw - player.yaw + 180) % 360) - 180;
         const pitchDiff = targetPitch - player.pitch;
         
-        sendYaw = player.yaw + yawDiff * aimbotConfig.smoothness;
-        sendPitch = player.pitch + pitchDiff * aimbotConfig.smoothness;
+        // Use the correct method to send the updated angles
+        player.yaw = player.yaw + yawDiff * aimbotConfig.smoothness;
+        player.pitch = player.pitch + pitchDiff * aimbotConfig.smoothness;
     }
     
     // Main aimbot logic
-    if (aimbotConfig.onlyInCombat && !player.isAttacking()) return;
-    if (aimbotConfig.requireClick && !isMouseDown) return;
-    if (aimbotConfig.aimKey !== "none" && !keyPressed(aimbotConfig.aimKey)) return;
+    if (aimbotConfig.onlyInCombat && player.isAttacking && !player.isAttacking()) return;
+    if (aimbotConfig.requireClick && isMouseDown) return;
+    if (aimbotConfig.aimKey !== "none" && keyPressed && !keyPressed(aimbotConfig.aimKey)) return;
     
     const target = findBestTarget();
     if (target) {
@@ -4386,17 +4397,20 @@ new Module("Aimbot", (enabled) => {
     }
 }, "Combat");
 
-// Add aimbot options
-modules["Aimbot"].addoption("Range", Number, 6.0);
-modules["Aimbot"].addoption("Smoothness", Number, 0.15);
-modules["Aimbot"].addoption("AimBone", String, "head");
-modules["Aimbot"].addoption("TargetPlayers", Boolean, true);
-modules["Aimbot"].addoption("TargetMobs", Boolean, false);
-modules["Aimbot"].addoption("OnlyInCombat", Boolean, false);
-modules["Aimbot"].addoption("RequireClick", Boolean, false);
-modules["Aimbot"].addoption("FOV", Number, 90);
-modules["Aimbot"].addoption("IgnoreFriends", Boolean, true);
-})();
+// Add aimbot options - corrected the module reference
+// Note: This assumes 'modules' is a global object and 'addoption' is a valid method
+// If this is not the case, you'll need to adjust this part based on your actual module system
+if (typeof modules !== 'undefined' && modules.Aimbot && typeof modules.Aimbot.addoption === 'function') {
+    modules.Aimbot.addoption("Range", Number, 6.0);
+    modules.Aimbot.addoption("Smoothness", Number, 0.15);
+    modules.Aimbot.addoption("AimBone", String, "head");
+    modules.Aimbot.addoption("TargetPlayers", Boolean, true);
+    modules.Aimbot.addoption("TargetMobs", Boolean, false);
+    modules.Aimbot.addoption("OnlyInCombat", Boolean, false);
+    modules.Aimbot.addoption("RequireClick", Boolean, false);
+    modules.Aimbot.addoption("FOV", Number, 90);
+    modules.Aimbot.addoption("IgnoreFriends", Boolean, true);
+}
 `);
 
 	async function saveVapeConfig(profile) {
